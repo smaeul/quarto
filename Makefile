@@ -14,13 +14,10 @@ CROSS_COMPILE	?=
 # Toolchain
 AS		 = $(CROSS_COMPILE)fasm
 ASENV		 = INCLUDE=include
-CC		 = $(CROSS_COMPILE)clang
-CCOPTS		 = 
 LD		 = $(CROSS_COMPILE)ld
-LDBINOPTS	 = -T $(linker_script) -z max-page-size=0x1000
-LDLIBOPTS	 =
+LDOPTS		 = -T $(linker_script) -z max-page-size=0x1000
 RUSTC		 = $(CROSS_COMPILE)rustc
-RUSTCOPTS	 = --emit-llvm
+RUSTCOPTS	 =
 
 # Parameters
 version		:= 0
@@ -57,21 +54,15 @@ $(final_bin): $(linked_bin)
 	strip --strip-all $@
 
 $(linked_bin): $(objects) $(linker_script)
-	$(LD) $(LDBINOPTS) $(LDFLAGS) -o $@ $^
-
-%.o: %.bc
-	$(CC) -c $(CCOPTS) $(CFLAGS) -o $@ $<
-
-%.o: %.c
-	$(CC) -c $(CCOPTS) $(CFLAGS) -o $@ $<
+	$(LD) $(LDOPTS) $(LDFLAGS) -o $@ $^
 
 %.o: %.s
 	$(ASENV) $(AS) $< $@
 
-%.bc: %.rs
+%.o: %.rs
 	$(RUSTC) -c $(RUSTCOPTS) $(RUSTCFLAGS) -o $@ $<
 
 clean:
-	@rm -f *.elf $(addsuffix /*.o,$(subdirs)) $(addsuffix /*.bc,$(subdirs))
+	@rm -f *.elf $(addsuffix /*.o,$(subdirs))
 
 .PHONY: quarto qemu stats clean
