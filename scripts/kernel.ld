@@ -31,7 +31,7 @@ SECTIONS
     {
 	__text_start = .;
 	*(.init)		/* The springboard we jump to in high RAM */
-	*(.text)		/* Normal 64-Bit Code */
+	*(.text*)		/* Normal 64-Bit Code */
 	__text_end = .;
 	__multiboot_text_end = . - HM_OFFSET;
     }
@@ -39,7 +39,7 @@ SECTIONS
     .data : AT(ADDR(.data) - HM_OFFSET)
     {
 	__data_start = .;
-	*(.data)		/* Global Variables */
+	*(.data*)		/* Global Variables */
 	*(.rodata*)		/* String Constants */
 	__data_end = .;
 	__multiboot_data_end = . - HM_OFFSET;
@@ -50,11 +50,18 @@ SECTIONS
 	__bss_start = .;
 	__multiboot_bss_start = . - HM_OFFSET; /* For 32-bit relocations */
 	*(.loaderbss)		/* Temporary init data (multiboot struct) */
-	*(.bss)			/* Normal Reserved Memory */
+	*(.bss*)		/* Normal Reserved Memory */
 	*(COMMON)		/* Other Uninitialized Data */
 	__bss_end = .;
 	__multiboot_bss_end = . - HM_OFFSET;
     }
 
     __end = .;
+
+    /DISCARD/ :
+    {
+	*(.comment)
+	*(.eh_frame)
+	*(.note*)
+    }
 }
