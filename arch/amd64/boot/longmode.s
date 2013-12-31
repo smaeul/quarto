@@ -6,6 +6,7 @@
 
 format elf64
 
+include "asm/constants.inc"
 include "asm/gdt.inc"
 include "asm/memmap.inc"
 
@@ -101,7 +102,43 @@ longmode:				; Now we actually enter long mode
 use64					; Now instructions are 64-bit
  .final:				; Do any final native/multiboot setup
 
-	mov	ebx,	0xB8000		;   For debugging, we put a 3 in the
-	mov	[rbx],	byte '3'	;     top-left corner of the screen
+	mov	ebx,	0xB8000		; For debugging, we put a 3 in the
+	mov	[rbx],	byte '3'	;   top-left corner of the screen
 
-	jmp common			;   Jump to the common setup routines
+	mov	rax,	trampoline	; Jump to the top PML4T entry
+	jmp	rax
+
+
+section '.text'
+
+use64
+trampoline:
+	mov	edx,	HMD		; Save kernel base in gs/KernelGSBase
+	xor	eax,	eax		; High dword is HMD; low dword is 0
+	mov	ecx,	0xC0000101	; GS.Base MSR
+	wrmsr				; Save it from edx:eax
+	mov	ecx,	0xC0000102	; KernelGSBase
+	wrmsr				; Save it
+
+	shl	rdx,	32		; Move HMD to high dword of rdx
+	lgdt	[rdx+gdt_ptr]		; Reload GDT (with 64-bit vaddr)
+
+	mov	[rdx+pml4t], rax	; Zero the "identity" low PML4T entry
+
+	mov	eax,	pml4t		; Reload CR3 to flush TLB
+	mov	cr3,	rax		;   This prevents stale identity access
+	mov	eax,	0xA0		; Enable Global Pages (so kernel-space
+	mov	cr4,	rax		;   mappings aren't flushed every time
+					;   CR3 is reloaded)
+
+	mov	ebx,	0xB8000		; For debugging, we put a 4 in the
+	mov	[gs:ebx], byte '4'	;   top-left corner of the screen
+
+	lea	rsp, [rdx+init_stack]	; Initialize stack pointer before
+					;   calling anything
+
+	call	common			; Common initialization routine
+
+idle:
+	hlt
+	jmp	idle
