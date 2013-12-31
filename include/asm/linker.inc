@@ -7,8 +7,8 @@
 ; TODO: Generate these from scripts/kernel.ld
 
 extrn __start
-extrn __init_start
-extrn __init_end
+extrn __loader_start
+extrn __loader_end
 extrn __text_start
 extrn __text_end
 extrn __data_start
