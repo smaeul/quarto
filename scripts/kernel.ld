@@ -30,7 +30,6 @@ SECTIONS
     .text : AT(ADDR(.text) - HM_OFFSET)
     {
 	__text_start = .;
-	*(.init)		/* The springboard we jump to in high RAM */
 	*(.text*)		/* Normal 64-Bit Code */
 	__text_end = .;
 	__multiboot_text_end = . - HM_OFFSET;
