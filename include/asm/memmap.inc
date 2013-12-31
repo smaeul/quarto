@@ -9,11 +9,19 @@ idt:		rq 512			;   4KiB in 256 16-byte descriptors
 gdt:		rq 512			;   4KiB in 512 8-byte descriptors
 pml4t:		rq 512			;   4KiB in 512 8-byte entries
 pdpt:		rq 512			;   4KiB in 512 8-byte entries
-org 0x10000
-pdt:		rq 32768		;   256KiB in 64 tables of 512 entries
+
+org 0x4000
+meminfo:				; E820 Memory Map
+ ; http://www.returninfinity.com/pure64-manual.html
+ .addr		dq ?			;   Arbitrary number of these structs
+ .len		dq ?
+ .typd		dw ?
+ .null		dq 0,0			;   Null terminating struct
+		db 0
 
 org 0x5000
 bootinfo:				; Boot information table from pure64
+ ; http://www.returninfinity.com/pure64-manual.html
  .acpi_tbls	dq ?			;   0x5000
  .bspid		dd ?			;   0x5008
 		dd 0			;   0x500C (Reserved - padding)
@@ -39,4 +47,13 @@ bootinfo:				; Boot information table from pure64
  .ioapics	dq ?			;   0x5068 (Start of a list)
 org 0x5100
  .apic_ids	db ?			;   0x5100 (Start of a list)
+
+org 0x5C00
+vesainfo:
+ ; http://www.ctyme.com/intr/rb-0274.htm
+		rb 256			; FIXME: Define
+
+org 0x10000
+init_stack:				; Grows down from here; 32KiB is safe
+pdt:		rq 32768		; 256KiB in 64 PDTs (512 entries each)
 end virtual
