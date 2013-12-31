@@ -22,7 +22,7 @@ RUSTC		 = $(CROSS_COMPILE)rustc
 RUSTOPTS	 =
 
 # Parameters
-version		:= 0
+version		:= 0.0
 
 # Directories
 base_dirs	 = boot exec lib mem udi
@@ -48,7 +48,7 @@ qemu: $(final_bin)
 stats: $(final_bin)
 	@echo Size:
 	@size $<
-	@readelf -l $< | grep -FB3 '0x0'
+	@readelf -l $< | grep -B3 '0x0'
 
 # Should add gzipping at some point...
 $(final_bin): $(linked_bin)
