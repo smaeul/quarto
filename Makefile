@@ -1,42 +1,32 @@
+# ╭─╮╷ ╷╭─╮╭─╮─┬─╭─╮   A legacy-free OS
+# │ ││ │├─┤├┬╯ │ │ │   framework for the
+# ╰─\╰─╯╵ ╵╵╰╴ ╵ ╰─╯   next generation
 #
-# /~\ | | /~\ |~) ~T~ /~\   A kernel for the
-# \_X \_/ |~| |~\  |  \_/   next  generation
+# © 2013-2014 Samuel Holland <samuel@sholland.net>
+# MIT Licensed; I reserve the right to relicense.
 #
-# Copyright (C) 2013-2014
-# Samuel Holland <samuel@sholland.net>
-# MIT Licensed
-#
+
+# Parameters
+version		:= 0.0
 
 # Build Type
 ARCH		?= amd64
 CROSS_COMPILE	?=
 
 # Toolchain
-AS		 = $(CROSS_COMPILE)fasm
-ASENV		 = INCLUDE=include
-CC		 = $(CROSS_COMPILE)clang
-COPTS		 =
+FASM		 = $(CROSS_COMPILE)fasm
 LD		 = $(CROSS_COMPILE)ld
-LDOPTS		 = -T $(linker_script) -z max-page-size=0x1000
+LDFLAGS		 =
 RUSTC		 = $(CROSS_COMPILE)rustc
-RUSTOPTS	 =
-
-# Parameters
-version		:= 0.0
-
-# Directories
-base_dirs	 = boot exec lib mem udi
-arch_dirs	 = $(foreach dir,$(base_dirs),arch/$(ARCH)/$(dir))
-subdirs		:= $(base_dirs) $(arch_dirs) $(patsubst %/,%,\
-			$(foreach dir,$(base_dirs) $(arch_dirs),\
-			$(filter %/, $(wildcard $(dir)/*/))))
+RUSTFLAGS	 =
 
 # Files
+asm_objects	:= $(addprefix arch/$(ARCH)/asm/, boot.o interrupts.o)
 final_bin	:= quartoz.elf
 linked_bin	:= quarto.elf
-linker_script	:= scripts/kernel.ld
-objects		 = $(addsuffix .o,$(basename $(filter %.c %.rs %.s,\
-			$(foreach dir,$(subdirs),$(wildcard $(dir)/*)))))
+linker_script	:= scripts/$(ARCH).ld
+rust_deps	:= rustdeps.mk
+rust_objects	:= quarto.o
 
 # Goals
 quarto: $(final_bin)
@@ -47,27 +37,31 @@ qemu: $(final_bin)
 
 stats: $(final_bin)
 	@echo Size:
-	@size $<
+	@size -x $<
 	@readelf -l $< | grep -B3 '0x0'
 
+# Compilation Rules
 # Should add gzipping at some point...
 $(final_bin): $(linked_bin)
 	cp $< $@
 	strip --strip-all $@
 
-$(linked_bin): $(objects) $(linker_script)
-	$(LD) $(LDOPTS) $(LDFLAGS) -o $@ $^
+$(linked_bin): $(asm_objects) $(rust_objects) $(linker_script)
+	$(LD) $(LDFLAGS) -T $(linker_script) -z max-page-size=0x1000 -o $@ $^
 
-%.o: %.bc
-	$(CC) -c $(COPTS) $(CFLAGS) -o $@ $<
+$(asm_objects): %.o: %.asm
+	$(FASM) $< $@
 
-%.o: %.s
-	$(ASENV) $(AS) $< $@
+$(rust_deps): $(rust_objects:.o=.rs)
+	$(RUSTC) $(RUSTFLAGS) --dep-info rustdeps.mk --emit=obj -o /dev/null $<
 
-%.bc: %.rs
-	$(RUSTC) --emit-llvm $(RUSTOPTS) $(RUSTFLAGS) $<
+$(rust_objects): %.o: %.rs $(rust_deps)
+	$(RUSTC) $(RUSTFLAGS) --dep-info rustdeps.mk --emit=obj -o $@ $<
 
+# Other Rules
 clean:
-	@rm -f *.elf $(addsuffix /*.o,$(subdirs)) $(addsuffix /*.bc,$(subdirs))
+	@rm -f *.elf $(asm_objects) $(rust_deps) $(rust_objects)
 
 .PHONY: quarto qemu stats clean
+
+-include $(rust_deps)
